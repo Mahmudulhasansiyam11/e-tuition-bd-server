@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion } = require("mongodb");
+const { ObjectId } = require("mongodb");
 const admin = require("firebase-admin");
 const port = process.env.PORT || 3000;
 const decoded = Buffer.from(process.env.FB_SERVICE_KEY, "base64").toString(
@@ -67,6 +68,16 @@ async function run() {
     app.get("/tuitions", async (req, res) => {
       const cursor = tuitionsCollection.find();
       const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    // DELETE tuition by ID
+    app.delete("/tuitions/:id", async (req, res) => {
+      const id = req.params.id;
+
+      const query = { _id: new ObjectId(id) };
+      const result = await tuitionsCollection.deleteOne(query);
+
       res.send(result);
     });
 

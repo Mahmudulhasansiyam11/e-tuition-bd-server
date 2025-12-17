@@ -136,6 +136,16 @@ async function run() {
       res.send(result);
     });
 
+    // UPDATE application status (Approve / Reject)
+    app.put("/applications/status/:id", async (req, res) => {
+      const { status } = req.body; // Expected: "Approved" or "Rejected"
+      const result = await tutorApplicationCollection.updateOne(
+        { _id: new ObjectId(req.params.id) },
+        { $set: { status } }
+      );
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(

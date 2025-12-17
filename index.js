@@ -57,6 +57,8 @@ async function run() {
     const db = client.db("tuitionsDB");
 
     const tuitionsCollection = db.collection("tuitions");
+    const tutorApplicationCollection = db.collection("applications");
+
     // Save a post new tuition data in db
     app.post("/tuitions", async (req, res) => {
       const tuitionData = req.body;
@@ -97,6 +99,23 @@ async function run() {
       };
 
       const result = await tuitionsCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
+
+    // save a post new application for tutor application
+    app.post("/applications", async (req, res) => {
+      const application = req.body;
+      const result = await tutorApplicationCollection.insertOne(application);
+      res.send(result);
+    });
+
+    // update tutor application by id on set status in pending
+    app.patch("/applications/:id", async (req, res) => {
+      const id = req.params.id;
+      const { status } = req.body;
+
+      const result = await tutorApplicationCollection.updateOne({ _id: new ObjectId(id) }, { $set: { status } });
+
       res.send(result);
     });
 

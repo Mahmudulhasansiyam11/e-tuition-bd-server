@@ -81,6 +81,25 @@ async function run() {
       res.send(result);
     });
 
+    // UPDATE tuition by ID
+    app.put("/tuitions/:id", async (req, res) => {
+      const id = req.params.id;
+      const updatedData = req.body;
+
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          subject: updatedData.subject,
+          classLevel: updatedData.classLevel,
+          location: updatedData.location,
+          budget: updatedData.budget,
+        },
+      };
+
+      const result = await tuitionsCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(

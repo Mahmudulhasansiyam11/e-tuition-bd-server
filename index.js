@@ -102,20 +102,37 @@ async function run() {
       res.send(result);
     });
 
+    // get all applications data from db
+    app.get("/applications", async (req, res) => {
+      const cursor = tutorApplicationCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
     // save a post new application for tutor application
     app.post("/applications", async (req, res) => {
       const application = req.body;
+      application.status = "Pending";
+      application.appliedAt = new Date();
       const result = await tutorApplicationCollection.insertOne(application);
       res.send(result);
     });
 
-    // update tutor application by id on set status in pending
-    app.patch("/applications/:id", async (req, res) => {
-      const id = req.params.id;
-      const { status } = req.body;
+    // DELETE an application
+    app.delete("/applications/:id", async (req, res) => {
+      const result = await tutorApplicationCollection.deleteOne({
+        _id: new ObjectId(req.params.id),
+      });
+      res.send(result);
+    });
 
-      const result = await tutorApplicationCollection.updateOne({ _id: new ObjectId(id) }, { $set: { status } });
-
+    // UPDATE an application (only Pending)
+    app.put("/applications/:id", async (req, res) => {
+      const { qualifications, experience, expectedSalary } = req.body;
+      const result = await tutorApplicationCollection.updateOne(
+        { _id: new ObjectId(req.params.id), status: "Pending" },
+        { $set: { qualifications, experience, expectedSalary } }
+      );
       res.send(result);
     });
 

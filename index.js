@@ -2,6 +2,8 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion } = require("mongodb");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+// const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const { ObjectId } = require("mongodb");
 const admin = require("firebase-admin");
 const port = process.env.PORT || 3000;
@@ -17,11 +19,7 @@ const app = express();
 // middleware
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "https://b12-m11-session.web.app",
-    ],
+    origin: [process.env.CLIENT_DOMAIN],
     credentials: true,
     optionSuccessStatus: 200,
   })
@@ -144,6 +142,75 @@ async function run() {
         { $set: { status } }
       );
       res.send(result);
+    });
+
+    // Stripe checkout session endpoint
+    app.post("/create-checkout-session", async (req, res) => {
+      try {
+        const paymentInfo = req.body;
+
+        if (
+          !paymentInfo ||
+          !paymentInfo.tutorId ||
+          !paymentInfo.expectedSalary
+        ) {
+          return res.status(400).json({ error: "Missing payment info" });
+        }
+
+        const session = await stripe.checkout.sessions.create({
+          payment_method_types: ["card"],
+          line_items: [
+            {
+              price_data: {
+                currency: "usd",
+                product_data: {
+                  name: paymentInfo.name,
+                },
+                unit_amount: paymentInfo.expectedSalary * 100,
+              },
+              quantity: paymentInfo.quantity || 1,
+            },
+          ],
+          mode: "payment",
+          metadata: {
+            tutorId: paymentInfo.tutorId,
+            tutorEmail: paymentInfo.tutor?.email,
+          },
+          success_url: `${process.env.CLIENT_DOMAIN}/payment-success?applicationId=${paymentInfo.tutorId}`,
+          cancel_url: `${process.env.CLIENT_DOMAIN}/dashboard/applied-tutors`,
+        });
+
+        // payment success approve tutor
+        app.get("/payment-success", async (req, res) => {
+          const { applicationId } = req.query;
+
+          // 1️⃣ Approve selected tutor
+          await tutorApplicationCollection.updateOne(
+            { _id: new ObjectId(applicationId) },
+            { $set: { status: "Approved" } }
+          );
+
+          // 2️⃣ OPTIONAL: Reject others of same tuition
+          const approvedApp = await tutorApplicationCollection.findOne({
+            _id: new ObjectId(applicationId),
+          });
+
+          await tutorApplicationCollection.updateMany(
+            {
+              tuitionId: approvedApp.tuitionId,
+              _id: { $ne: new ObjectId(applicationId) },
+            },
+            { $set: { status: "Rejected" } }
+          );
+
+          res.redirect(`${process.env.CLIENT_URL}/dashboard/applied-tutors`);
+        });
+
+        res.json({ url: session.url });
+      } catch (error) {
+        console.error("Stripe checkout error:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
     });
 
     // Send a ping to confirm a successful connection

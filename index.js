@@ -57,6 +57,7 @@ async function run() {
     const tuitionsCollection = db.collection("tuitions");
     const tutorApplicationCollection = db.collection("applications");
     const ordersCollection = db.collection("orders");
+    const usersCollection = db.collection("users");
 
     // Save a post new tuition data in db
     app.post("/tuitions", async (req, res) => {
@@ -111,7 +112,9 @@ async function run() {
     // get all applications data from db
     app.get("/applications/:email", async (req, res) => {
       const email = req.params.email;
-      const result = await tutorApplicationCollection.find({ tutorEmail: email}).toArray();
+      const result = await tutorApplicationCollection
+        .find({ tutorEmail: email })
+        .toArray();
       res.send(result);
     });
 
@@ -252,20 +255,46 @@ async function run() {
     // get user payment detail
     app.get("/my-orders/:email", async (req, res) => {
       const email = req.params.email;
-      const result = await ordersCollection.find({ userEmail : email }).toArray();
+      const result = await ordersCollection
+        .find({ userEmail: email })
+        .toArray();
       res.send(result);
     });
 
     // get ongoing tuitions details
     app.get("/my-ongoing-tuitions/:email", async (req, res) => {
       const email = req.params.email;
-      const result = await tutorApplicationCollection.find({ tutorEmail: email}).toArray();
+      const result = await tutorApplicationCollection
+        .find({ tutorEmail: email })
+        .toArray();
       res.send(result);
-    })
+    });
 
     // get user payment detail
     app.get("/transaction-history", async (req, res) => {
       const result = await ordersCollection.find().toArray();
+      res.send(result);
+    });
+
+    // save or update a user in db
+    app.put("/users", async (req, res) => {
+      const user = req.body;
+      const query = { email: user?.email };
+
+      // Check if user already exists (to avoid overwriting an existing Tutor role with Student)
+      const isExist = await usersCollection.findOne(query);
+      if (isExist) {
+        return res.send(isExist);
+      }
+
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          ...user,
+          timestamp: Date.now(),
+        },
+      };
+      const result = await usersCollection.updateOne(query, updateDoc, options);
       res.send(result);
     });
 

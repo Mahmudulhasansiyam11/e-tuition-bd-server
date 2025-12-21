@@ -253,17 +253,17 @@ async function run() {
     });
 
     // get all orders data from db
-    app.get("/my-orders", async (req, res) => {
+    app.get("/my-orders1", async (req, res) => {
       const cursor = ordersCollection.find();
       const result = await cursor.toArray();
       res.send(result);
     });
 
     // get user payment detail
-    app.get("/my-orders/:email", async (req, res) => {
-      const email = req.params.email;
+    app.get("/my-orders", verifyJWT, async (req, res) => {
+      // const email = req.params.email;
       const result = await ordersCollection
-        .find({ userEmail: email })
+        .find({ userEmail: req.tokenEmail })
         .toArray();
       res.send(result);
     });
@@ -359,18 +359,19 @@ async function run() {
 
     // get a user's role
     app.get("/user/role", verifyJWT, async (req, res) => {
+      // const email = req.params.email;
       const result = await usersCollection.findOne({ email: req.tokenEmail });
       res.send({ role: result?.role });
     });
 
-    // 2. Get ONLY approved tuitions for the public board (for tutors)
+    // Get ONLY approved tuitions for the public board (for tutors)
     app.get("/tuitions", async (req, res) => {
       const query = { status: "Approved" };
       const result = await tuitionsCollection.find(query).toArray();
       res.send(result);
     });
 
-    // 3. Update Tuition Status (Approve/Reject)
+    // Update Tuition Status (Approve/Reject)
     app.patch("/tuition/status/:id", async (req, res) => {
       const id = req.params.id;
       const { status } = req.body;

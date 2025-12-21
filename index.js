@@ -252,6 +252,13 @@ async function run() {
       }
     });
 
+     // get all orders data from db
+    app.get("/my-orders", async (req, res) => {
+      const cursor = ordersCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
     // get user payment detail
     app.get("/my-orders/:email", async (req, res) => {
       const email = req.params.email;

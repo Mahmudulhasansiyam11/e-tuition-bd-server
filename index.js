@@ -334,9 +334,8 @@ async function run() {
 
 
     // get a user's role
-    app.get("/user/role/:email", async (req, res) => {
-      const email = req.params.email;
-      const result = await usersCollection.findOne({ email });
+    app.get("/user/role", verifyJWT, async (req, res) => {
+      const result = await usersCollection.findOne({ email: req.tokenEmail });
       res.send({ role: result?.role });
     })
 

@@ -56,6 +56,7 @@ async function run() {
 
     const tuitionsCollection = db.collection("tuitions");
     const tutorApplicationCollection = db.collection("applications");
+    const ordersCollection = db.collection("orders");
 
     // Save a post new tuition data in db
     app.post("/tuitions", async (req, res) => {
@@ -145,15 +146,146 @@ async function run() {
     });
 
     // Stripe checkout session endpoint
+    // app.post("/create-checkout-session", async (req, res) => {
+    //   try {
+    //     const paymentInfo = req.body;
+
+    //     if (
+    //       !paymentInfo ||
+    //       !paymentInfo.tutorId ||
+    //       !paymentInfo.expectedSalary
+    //     ) {
+    //       return res.status(400).json({ error: "Missing payment info" });
+    //     }
+
+    //     const session = await stripe.checkout.sessions.create({
+    //       payment_method_types: ["card"],
+    //       line_items: [
+    //         {
+    //           price_data: {
+    //             currency: "usd",
+    //             product_data: {
+    //               name: paymentInfo.name,
+    //             },
+    //             unit_amount: paymentInfo.expectedSalary * 100,
+    //           },
+    //           quantity: paymentInfo.quantity || 1,
+    //         },
+    //       ],
+    //       mode: "payment",
+    //       metadata: {
+    //         tutorId: paymentInfo.tutorId,
+    //         tutorEmail: paymentInfo.tutor?.email,
+    //       },
+    //       success_url: `${process.env.CLIENT_DOMAIN}/payment-success?applicationId=${paymentInfo.tutorId}`,
+    //       cancel_url: `${process.env.CLIENT_DOMAIN}/dashboard/applied-tutors`,
+    //     });
+
+    //      // save order data in database
+    // app.post("/payment-success", async (req, res) => {
+    //   const { applicationId } = req.body;
+    //   const application = await stripe.checkout.sessions.retrieve(
+    //     applicationId
+    //   );
+    //   const tutor = await tutorApplicationCollection.findOne({
+    //     _id: new ObjectId(application.metadata.tutorId),
+    //   });
+
+    //   if (application.status === "complete" && tutor) {
+    //     const orderInfo = {
+    //       tutorId: application.metadata.tutorId,
+    //       transactionId: application.payment_intent,
+    //       tutor: application.metadata.tutor,
+    //       status: "Pending",
+    //       tutor: tutor.tutor,
+    //       name: tutor.name,
+    //       quantity: 1,
+    //       expectedSalary: application.amount_total / 100,
+    //     }
+    //     const result = await ordersCollection.insertOne(orderInfo);
+    //   }
+    // });
+
+    //     // // save order data in database
+    //     // app.post("/payment-success", async (req, res) => {
+    //     //   const { applicationId } = req.body;
+    //     //   const application = await stripe.checkout.sessions.retrieve(applicationId);
+    //     //   const tutor = await tutorApplicationCollection.findOne({ _id: new ObjectId(application.metadata.tutorId)})
+
+    //     //   if(application.status === 'complete'){
+    //     //     const orderInfo = {
+    //     //       tutorId: application.metadata.tutorId,
+    //     //       transactionId: application.payment_intent,
+    //     //       tutor: paymentInfo.metadata.tutor,
+    //     //       status: 'Pending'
+    //     //     }
+    //     //   }
+    //     // })
+
+    //     // payment success approve tutor
+    //     // app.get("/payment-success", async (req, res) => {
+    //     //   const { applicationId } = req.query;
+
+    //     //   // 1️⃣ Approve selected tutor
+    //     //   await tutorApplicationCollection.updateOne(
+    //     //     { _id: new ObjectId(applicationId) },
+    //     //     { $set: { status: "Approved" } }
+    //     //   );
+
+    //     //   // 2️⃣ OPTIONAL: Reject others of same tuition
+    //     //   const approvedApp = await tutorApplicationCollection.findOne({
+    //     //     _id: new ObjectId(applicationId),
+    //     //   });
+
+    //     //   await tutorApplicationCollection.updateMany(
+    //     //     {
+    //     //       tuitionId: approvedApp.tuitionId,
+    //     //       _id: { $ne: new ObjectId(applicationId) },
+    //     //     },
+    //     //     { $set: { status: "Rejected" } }
+    //     //   );
+
+    //     //   res.redirect(`${process.env.CLIENT_URL}/dashboard/applied-tutors`);
+    //     // });
+
+    //     res.json({ url: session.url });
+    //   } catch (error) {
+    //     console.error("Stripe checkout error:", error);
+    //     res.status(500).json({ error: "Internal Server Error" });
+    //   }
+    // });
+
+    // // save order data in database
+    // app.post("/payment-success", async (req, res) => {
+    //   const { applicationId } = req.body;
+    //   const application = await stripe.checkout.sessions.retrieve(
+    //     applicationId
+    //   );
+    //   const tutor = await tutorApplicationCollection.findOne({
+    //     _id: new ObjectId(application.metadata.tutorId),
+    //   });
+
+    //   if (application.status === "complete" && tutor) {
+    //     const orderInfo = {
+    //       tutorId: application.metadata.tutorId,
+    //       transactionId: application.payment_intent,
+    //       tutor: application.metadata.tutor,
+    //       status: "Pending",
+    //       tutor: tutor.tutor,
+    //       name: tutor.name,
+    //       quantity: 1,
+    //       expectedSalary: application.amount_total / 100,
+    //     }
+    //     const result = await ordersCollection.insertOne(orderInfo);
+    //   }
+    // });
+
+    // 1. Create Checkout Session
     app.post("/create-checkout-session", async (req, res) => {
       try {
         const paymentInfo = req.body;
 
-        if (
-          !paymentInfo ||
-          !paymentInfo.tutorId ||
-          !paymentInfo.expectedSalary
-        ) {
+        if (!paymentInfo?.tutorId || !paymentInfo?.expectedSalary) {
           return res.status(400).json({ error: "Missing payment info" });
         }
 
@@ -164,52 +296,84 @@ async function run() {
               price_data: {
                 currency: "usd",
                 product_data: {
-                  name: paymentInfo.name,
+                  name: `Tuition Payment for ${paymentInfo.name}`,
                 },
-                unit_amount: paymentInfo.expectedSalary * 100,
+                unit_amount: Math.round(paymentInfo.expectedSalary * 100), // Ensure it's an integer
               },
-              quantity: paymentInfo.quantity || 1,
+              quantity: 1,
             },
           ],
           mode: "payment",
           metadata: {
             tutorId: paymentInfo.tutorId,
-            tutorEmail: paymentInfo.tutor?.email,
+            tutorEmail: paymentInfo.tutorEmail || "",
           },
-          success_url: `${process.env.CLIENT_DOMAIN}/payment-success?applicationId=${paymentInfo.tutorId}`,
+          // Pass the session_id to the success page so the frontend can send it back to verify
+          success_url: `${process.env.CLIENT_DOMAIN}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
           cancel_url: `${process.env.CLIENT_DOMAIN}/dashboard/applied-tutors`,
-        });
-
-        // payment success approve tutor
-        app.get("/payment-success", async (req, res) => {
-          const { applicationId } = req.query;
-
-          // 1️⃣ Approve selected tutor
-          await tutorApplicationCollection.updateOne(
-            { _id: new ObjectId(applicationId) },
-            { $set: { status: "Approved" } }
-          );
-
-          // 2️⃣ OPTIONAL: Reject others of same tuition
-          const approvedApp = await tutorApplicationCollection.findOne({
-            _id: new ObjectId(applicationId),
-          });
-
-          await tutorApplicationCollection.updateMany(
-            {
-              tuitionId: approvedApp.tuitionId,
-              _id: { $ne: new ObjectId(applicationId) },
-            },
-            { $set: { status: "Rejected" } }
-          );
-
-          res.redirect(`${process.env.CLIENT_URL}/dashboard/applied-tutors`);
         });
 
         res.json({ url: session.url });
       } catch (error) {
         console.error("Stripe checkout error:", error);
         res.status(500).json({ error: "Internal Server Error" });
+      }
+    });
+
+    // 2. Handle Payment Success (Save to DB)
+    app.post("/payment-success", async (req, res) => {
+      try {
+        const { sessionId } = req.body;
+
+        // Retrieve the session from Stripe to verify payment was actually made
+        const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+        if (session.payment_status === "paid") {
+          const tutorId = session.metadata.tutorId;
+
+          // Check if this order already exists to prevent duplicates
+          const existingOrder = await ordersCollection.findOne({
+            transactionId: session.payment_intent,
+          });
+
+          if (existingOrder) {
+            return res.send({
+              message: "Order already recorded",
+              insertedId: existingOrder._id,
+            });
+          }
+
+          // Find tutor details
+          const tutor = await tutorApplicationCollection.findOne({
+            _id: new ObjectId(tutorId),
+          });
+
+          const orderInfo = {
+            tutorId: tutorId,
+            transactionId: session.payment_intent,
+            customerEmail: session.customer_details.email,
+            status: "Paid",
+            tutorName: tutor?.name || "Unknown",
+            amount: session.amount_total / 100,
+            paidAt: new Date(),
+          };
+
+          // 1. Save order to database
+          const result = await ordersCollection.insertOne(orderInfo);
+
+          // 2. Update application status to "Approved"
+          await tutorApplicationCollection.updateOne(
+            { _id: new ObjectId(tutorId) },
+            { $set: { status: "Approved" } }
+          );
+
+          res.send(result);
+        } else {
+          res.status(400).send({ message: "Payment not verified" });
+        }
+      } catch (error) {
+        console.error("Success handling error:", error);
+        res.status(500).send({ error: "Internal Server Error" });
       }
     });
 

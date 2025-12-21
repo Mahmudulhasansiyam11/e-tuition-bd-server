@@ -363,6 +363,31 @@ async function run() {
       res.send({ role: result?.role });
     });
 
+    // 2. Get ONLY approved tuitions for the public board (for tutors)
+    app.get("/tuitions", async (req, res) => {
+      const query = { status: "Approved" };
+      const result = await tuitionsCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // 3. Update Tuition Status (Approve/Reject)
+    app.patch("/tuition/status/:id", async (req, res) => {
+      const id = req.params.id;
+      const { status } = req.body;
+
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: { status: status },
+      };
+
+      try {
+        const result = await tuitionsCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Failed to update tuition status" });
+      }
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(

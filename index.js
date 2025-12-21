@@ -252,7 +252,7 @@ async function run() {
       }
     });
 
-     // get all orders data from db
+    // get all orders data from db
     app.get("/my-orders", async (req, res) => {
       const cursor = ordersCollection.find();
       const result = await cursor.toArray();
@@ -314,7 +314,7 @@ async function run() {
             ...user,
             created_at: new Date().toISOString(),
             last_loggedIn: new Date().toISOString(),
-            timestamp: new Date().toISOString(), 
+            timestamp: new Date().toISOString(),
           },
         };
 
@@ -332,12 +332,36 @@ async function run() {
       }
     });
 
+    // UPDATE USER INFO & ROLE (PATCH)
+    app.patch("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          name: req.body.name,
+          email: req.body.email,
+          role: req.body.role,
+          status: req.body.status,
+          verified: req.body.verified,
+        },
+      };
+      const result = await usersCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    //  DELETE USER
+    app.delete("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await usersCollection.deleteOne(query);
+      res.send(result);
+    });
 
     // get a user's role
     app.get("/user/role", verifyJWT, async (req, res) => {
       const result = await usersCollection.findOne({ email: req.tokenEmail });
       res.send({ role: result?.role });
-    })
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });

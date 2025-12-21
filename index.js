@@ -108,6 +108,13 @@ async function run() {
       res.send(result);
     });
 
+    // get all applications data from db
+    app.get("/applications/:email", async (req, res) => {
+      const email = req.params.email;
+      const result = await tutorApplicationCollection.find({ tutorEmail: email}).toArray();
+      res.send(result);
+    });
+
     // save a post new application for tutor application
     app.post("/applications", async (req, res) => {
       const application = req.body;

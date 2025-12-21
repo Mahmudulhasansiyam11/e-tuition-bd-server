@@ -284,8 +284,9 @@ async function run() {
     });
 
     // save or update a user in db
-    app.get("/users", async (req, res) => {
-      const cursor = usersCollection.find();
+    app.get("/users", verifyJWT, async (req, res) => {
+      const adminEmail = req.tokenEmail;
+      const cursor = usersCollection.find({email: {$ne: adminEmail}});
       const result = await cursor.toArray();
       res.send(result);
     });

@@ -269,10 +269,10 @@ async function run() {
     });
 
     // get ongoing tuitions details
-    app.get("/my-ongoing-tuitions/:email", async (req, res) => {
-      const email = req.params.email;
+    app.get("/my-ongoing-tuitions", verifyJWT, async (req, res) => {
+      // const email = req.params.email;
       const result = await tutorApplicationCollection
-        .find({ tutorEmail: email })
+        .find({ tutorEmail: req.tokenEmail })
         .toArray();
       res.send(result);
     });

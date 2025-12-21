@@ -277,25 +277,52 @@ async function run() {
     });
 
     // save or update a user in db
-    app.put("/users", async (req, res) => {
-      const user = req.body;
-      const query = { email: user?.email };
-
-      // Check if user already exists (to avoid overwriting an existing Tutor role with Student)
-      const isExist = await usersCollection.findOne(query);
-      if (isExist) {
-        return res.send(isExist);
-      }
-
-      const options = { upsert: true };
-      const updateDoc = {
-        $set: {
-          ...user,
-          timestamp: Date.now(),
-        },
-      };
-      const result = await usersCollection.updateOne(query, updateDoc, options);
+    app.get("/users", async (req, res) => {
+      const cursor = usersCollection.find();
+      const result = await cursor.toArray();
       res.send(result);
+    });
+
+    app.put("/users", async (req, res) => {
+      try {
+        const user = req.body;
+        const query = { email: user?.email };
+
+        // 1. Check if user already exists
+        const isExist = await usersCollection.findOne(query);
+
+        if (isExist) {
+          // If user exists, only update their last login time
+          const updateLogin = {
+            $set: { last_loggedIn: new Date().toISOString() },
+          };
+          const result = await usersCollection.updateOne(query, updateLogin);
+          return res.send(result);
+        }
+
+        // 2. If user is new, prepare data for insertion
+        const options = { upsert: true };
+        const updateDoc = {
+          $set: {
+            ...user,
+            created_at: new Date().toISOString(),
+            last_loggedIn: new Date().toISOString(),
+            timestamp: new Date().toISOString(), 
+          },
+        };
+
+        const result = await usersCollection.updateOne(
+          query,
+          updateDoc,
+          options
+        );
+        res.send(result);
+      } catch (error) {
+        console.error("Error in /users PUT:", error);
+        res
+          .status(500)
+          .send({ message: "Internal Server Error", error: error.message });
+      }
     });
 
     // Send a ping to confirm a successful connection

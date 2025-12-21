@@ -263,6 +263,12 @@ async function run() {
       res.send(result);
     })
 
+    // get user payment detail
+    app.get("/transaction-history", async (req, res) => {
+      const result = await ordersCollection.find().toArray();
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(

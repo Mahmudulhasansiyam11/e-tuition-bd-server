@@ -17,11 +17,29 @@ admin.initializeApp({
 
 const app = express();
 // middleware
+// app.use(
+//   cors({
+//     origin: [process.env.CLIENT_DOMAIN, "http://localhost:5173/"],
+//     credentials: true,
+//     optionSuccessStatus: 200,
+//   })
+// );
 app.use(
   cors({
-    origin: [process.env.CLIENT_DOMAIN],
+    origin: [
+      "http://localhost:5173"
+      ],
     credentials: true,
-    optionSuccessStatus: 200,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: [
+      'Content-Type', 
+      'Authorization', 
+      'X-Requested-With', 
+      'Accept'
+    ],
+    exposedHeaders: ['Content-Range', 'X-Content-Range'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
   })
 );
 app.use(express.json());

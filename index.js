@@ -443,6 +443,7 @@ async function run() {
       }
     });
 
+    // tuition listing get api to use pagination
     app.get("/tuitions-listing", async (req, res) => {
       try {
         const page = parseInt(req.query.page) || 1;
@@ -464,6 +465,40 @@ async function run() {
         res.send({ result, totalCount });
       } catch (error) {
         res.status(500).send({ message: "Error fetching data" });
+      }
+    });
+
+    // Get latest 3 tuitions for Homepage
+    app.get("/latest-tutors", async (req, res) => {
+      try {
+        const result = await tutorApplicationCollection
+          .find({}) // Empty object means no status filter
+          .sort({ _id: -1 })
+          .limit(3)
+          .toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching latest tutor:", error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+
+    app.get("/all-tutors", async (req, res) => {
+      try {
+        const { search } = req.query;
+        let query = {};
+
+        if (search) {
+          query.subject = { $regex: search, $options: "i" };
+        }
+
+        const result = await tutorApplicationCollection
+          .find(query)
+          .sort({ appliedAt: -1 }) // Show recently applied tutors first
+          .toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Error fetching tutors" });
       }
     });
 

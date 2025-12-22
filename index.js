@@ -394,7 +394,7 @@ async function run() {
     app.get("/all-tuitions", async (req, res) => {
       const { search, filterClass, location, sort } = req.query;
 
-      let query = {}; 
+      let query = {};
 
       // 1. Search by Subject (Case-insensitive)
       if (search) {
@@ -425,6 +425,21 @@ async function run() {
         res.send(result);
       } catch (error) {
         res.status(500).send({ message: "Error fetching tuitions" });
+      }
+    });
+
+    // Get latest 3 tuitions for Homepage (Status Independent)
+    app.get("/latest-tuitions", async (req, res) => {
+      try {
+        const result = await tuitionsCollection
+          .find({}) // Empty object means no status filter
+          .sort({ _id: -1 })
+          .limit(3)
+          .toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching latest tuitions:", error);
+        res.status(500).send({ message: "Internal Server Error" });
       }
     });
 

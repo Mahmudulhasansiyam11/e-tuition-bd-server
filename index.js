@@ -286,7 +286,7 @@ async function run() {
     // save or update a user in db
     app.get("/users", verifyJWT, async (req, res) => {
       const adminEmail = req.tokenEmail;
-      const cursor = usersCollection.find({email: {$ne: adminEmail}});
+      const cursor = usersCollection.find({ email: { $ne: adminEmail } });
       const result = await cursor.toArray();
       res.send(result);
     });
@@ -387,6 +387,44 @@ async function run() {
         res.send(result);
       } catch (error) {
         res.status(500).send({ message: "Failed to update tuition status" });
+      }
+    });
+
+    // Get all tuitions with Search, Filter, and Sort
+    app.get("/all-tuitions", async (req, res) => {
+      const { search, filterClass, location, sort } = req.query;
+
+      let query = {}; 
+
+      // 1. Search by Subject (Case-insensitive)
+      if (search) {
+        query.subject = { $regex: search, $options: "i" };
+      }
+
+      // 2. Filter by Class Level
+      if (filterClass) {
+        query.classLevel = filterClass;
+      }
+
+      // 3. Filter by Location (Case-insensitive)
+      if (location) {
+        query.location = { $regex: location, $options: "i" };
+      }
+
+      // 4. Sorting Logic
+      let sortOptions = {};
+      if (sort === "budgetLow") sortOptions = { budget: 1 };
+      if (sort === "budgetHigh") sortOptions = { budget: -1 };
+      if (sort === "newest") sortOptions = { _id: -1 }; // MongoDB IDs include timestamp
+
+      try {
+        const result = await tuitionsCollection
+          .find(query)
+          .sort(sortOptions)
+          .toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Error fetching tuitions" });
       }
     });
 

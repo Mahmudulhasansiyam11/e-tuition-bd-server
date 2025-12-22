@@ -32,7 +32,7 @@ app.use(
       "http://localhost:5173",
       "https://tution-bd-server-side.vercel.app",
       "https://tuition-bd-beta.vercel.app"
-    ],
+      ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: [
@@ -271,6 +271,118 @@ async function run() {
       } catch (error) {
         console.error("Success handling error:", error);
         res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
+
+    // 2b. Handle Payment Success GET request (from Stripe redirect)
+    app.get("/payment-success", async (req, res) => {
+      try {
+        const { session_id } = req.query;
+
+        if (!session_id) {
+          return res.status(400).json({ error: "Missing session_id" });
+        }
+
+        // Retrieve the session from Stripe to verify payment was actually made
+        const session = await stripe.checkout.sessions.retrieve(session_id);
+
+        if (session.payment_status === "paid") {
+          const tutorId = session.metadata.tutorId;
+
+          // Check if this order already exists to prevent duplicates
+          const existingOrder = await ordersCollection.findOne({
+            transactionId: session.payment_intent,
+          });
+
+          if (existingOrder) {
+            return res.json({
+              success: true,
+              message: "Payment successful - Order already recorded",
+              orderId: existingOrder._id,
+              sessionId: session_id
+            });
+          }
+
+          // Find tutor details
+          const tutor = await tutorApplicationCollection.findOne({
+            _id: new ObjectId(tutorId),
+          });
+
+          const orderInfo = {
+            tutorId: tutorId,
+            transactionId: session.payment_intent,
+            userEmail: session.customer_details.email,
+            status: "Paid",
+            userName: session.customer_details.name || "Unknown",
+            amount: session.amount_total / 100,
+            paidAt: new Date(),
+          };
+
+          // 1. Save order to database
+          const result = await ordersCollection.insertOne(orderInfo);
+
+          // 2. Update application status to "Approved"
+          await tutorApplicationCollection.updateOne(
+            { _id: new ObjectId(tutorId) },
+            { $set: { status: "Approved" } }
+          );
+
+          res.json({
+            success: true,
+            message: "Payment successful",
+            orderId: result.insertedId,
+            sessionId: session_id
+          });
+        } else {
+          res.status(400).json({ 
+            success: false, 
+            message: "Payment not verified",
+            sessionId: session_id 
+          });
+        }
+      } catch (error) {
+        console.error("Success handling error:", error);
+        res.status(500).json({ 
+          success: false, 
+          error: "Internal Server Error",
+          message: error.message 
+        });
+      }
+    });
+
+    // 3. Handle Payment Error/Failure
+    app.get("/payment-error", async (req, res) => {
+      try {
+        const { error, session_id } = req.query;
+        
+        let errorDetails = {
+          error: error || "unknown_error",
+          message: "Payment failed or was cancelled",
+          timestamp: new Date().toISOString()
+        };
+
+        // If session_id is provided, get more details from Stripe
+        if (session_id) {
+          try {
+            const session = await stripe.checkout.sessions.retrieve(session_id);
+            errorDetails.sessionStatus = session.payment_status;
+            errorDetails.sessionId = session_id;
+          } catch (stripeError) {
+            console.error("Error retrieving session:", stripeError);
+          }
+        }
+
+        // Log the error for debugging
+        console.error("Payment error:", errorDetails);
+
+        // Return error details to frontend
+        res.status(400).json(errorDetails);
+      } catch (error) {
+        console.error("Payment error handling failed:", error);
+        res.status(500).json({ 
+          error: "internal_server_error", 
+          message: "Failed to process payment error" 
+        });
       }
     });
 

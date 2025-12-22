@@ -428,7 +428,7 @@ async function run() {
       }
     });
 
-    // Get latest 3 tuitions for Homepage (Status Independent)
+    // Get latest 3 tuitions for Homepage
     app.get("/latest-tuitions", async (req, res) => {
       try {
         const result = await tuitionsCollection
@@ -440,6 +440,30 @@ async function run() {
       } catch (error) {
         console.error("Error fetching latest tuitions:", error);
         res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+
+    app.get("/tuitions-listing", async (req, res) => {
+      try {
+        const page = parseInt(req.query.page) || 1;
+        const size = parseInt(req.query.size) || 10; // Default 10 items per page
+
+        const query = {}; // Add filters here if needed
+
+        // 1. Get total count of items for this query
+        const totalCount = await tuitionsCollection.countDocuments(query);
+
+        // 2. Fetch the specific page data
+        const result = await tuitionsCollection
+          .find(query)
+          .sort({ _id: -1 }) // Newest first
+          .skip((page - 1) * size)
+          .limit(size)
+          .toArray();
+
+        res.send({ result, totalCount });
+      } catch (error) {
+        res.status(500).send({ message: "Error fetching data" });
       }
     });
 

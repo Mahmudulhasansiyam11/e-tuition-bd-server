@@ -14,6 +14,8 @@ const serviceAccount = JSON.parse(decoded);
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
+// mongoose.connect(process.env.MONGODB_URI);
+
 
 const app = express();
 // middleware
@@ -27,8 +29,10 @@ const app = express();
 app.use(
   cors({
     origin: [
-      "http://localhost:5173"
-      ],
+      "http://localhost:5173",
+      "https://tution-bd-server-side.vercel.app",
+      "https://tuition-bd-beta.vercel.app"
+    ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: [
